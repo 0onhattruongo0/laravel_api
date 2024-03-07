@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Models\User;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\UserResource;
 use Illuminate\Support\Facades\Hash;
+use App\Http\Resources\UserCollection;
 
 class UserController extends Controller
 {
@@ -26,30 +28,44 @@ class UserController extends Controller
             $users->where($where);
         }
 
-        $users = $users->get();
+        // $users = $users->get();
+
+
         if ($users->count() > 0) {
-            $status = 'success';
+            $statusCode = 200;
+            $statusText = "success";
         } else {
-            $status = 'no data';
+            $statusCode = 404;
+            $statusText = "no found";
         };
-        $response = [
-            'status' => $status,
-            'data' => $users
-        ];
+
+        // $users = UserResource::collection($users);
+
+        // $response = [
+        //     'status' => $status,
+        //     'data' => $users
+        // ];
+        $users = $users->with('posts')->paginate();
+        $response = new UserCollection($users, $statusCode, $statusText);
         return $response;
     }
 
     public function detail($id)
     {
 
-        $user = User::find($id);
+        $user = User::with('posts')->find($id);
         if (!$user) {
-            $status = 'no data';
+            $statusCode = 404;
+            $statusText = 'no found';
         } else {
-            $status = 'success';
+            $statusCode = 200;
+            $statusText = 'success';
+            $user = new UserResource($user);
         }
+
         $response = [
-            'status' => $status,
+            'status' => $statusCode,
+            'title' => $statusText,
             'data' => $user
         ];
         return $response;
@@ -66,12 +82,14 @@ class UserController extends Controller
 
         if ($user->id) {
             $response = [
-                'status' => 'success',
+                'status' =>  201,
+                'title' => 'success',
                 'data' => $user
             ];
         } else {
             $response = [
-                'status' => 'errors',
+                'status' => 500,
+                'title' => 'error'
             ];
         }
         return $response;
@@ -82,7 +100,8 @@ class UserController extends Controller
         $user = User::find($id);
         if (!$user) {
             $response = [
-                'status' => 'errors',
+                'status' => 404,
+                'title' => 'not found',
             ];
         } else {
             if ($request->method() == 'PUT') {
@@ -107,7 +126,8 @@ class UserController extends Controller
                 $user->save();
             }
             $response = [
-                'status' => 'success',
+                'status' => 200,
+                'title' => 'success',
                 'data' => $user
             ];
         }
@@ -120,11 +140,13 @@ class UserController extends Controller
         $user = User::destroy($user->id);
         if ($user) {
             $response = [
-                'status' => 'success',
+                'status' => 204,
+                'title' => 'success',
             ];
         } else {
             $response = [
-                'status' => 'error',
+                'status' => 404,
+                'title' => 'not found',
             ];
         }
         return $response;
